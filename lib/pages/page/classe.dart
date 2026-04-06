@@ -99,7 +99,31 @@ class _ClassePageState extends State<ClassePage> {
   }
 
   Future<void> deleteClasse(String classeId) async {
-    await classesRef.doc(classeId).delete();
+    // 🔹 Confirmation avant suppression
+    final bool? confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text("Confirmer la suppression"),
+          content: const Text(
+              "Êtes-vous sûr de vouloir supprimer cette classe ? Cette action est irréversible."),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text("Annuler"),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.pop(context, true),
+              child: const Text("Supprimer"),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (confirm == true) {
+      await classesRef.doc(classeId).delete();
+    }
   }
 
   /// 🔥 BOUTON CARRE (SANS ICON → PAS DE BUG)

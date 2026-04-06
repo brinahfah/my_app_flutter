@@ -21,12 +21,12 @@ class NotificationDisplayService {
     } else {
       showDialog(
         context: context,
-        builder: (context) => AlertDialog(
+        builder: (dialogContext) => AlertDialog(
           title: Text(title),
           content: Text(body),
           actions: [
             TextButton(
-              onPressed: () => Navigator.pop(context),
+              onPressed: () => Navigator.pop(dialogContext),
               child: const Text("OK"),
             ),
           ],
@@ -178,6 +178,29 @@ class _RendezVousSectionState extends State<RendezVousSection> {
     });
   }
 
+  Future<void> deleteRdv(String docId, String commentaire, DateTime? date) async {
+    // Confirmation avant suppression
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text("Confirmer la suppression"),
+        content: const Text("Voulez-vous vraiment supprimer ce rendez-vous ?"),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(dialogContext, false),
+              child: const Text("Annuler")),
+          TextButton(
+              onPressed: () => Navigator.pop(dialogContext, true),
+              child: const Text("Supprimer")),
+        ],
+      ),
+    );
+
+    if (confirm == true) {
+      await updateRdv(docId, commentaire, null);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return StreamBuilder<QuerySnapshot>(
@@ -248,7 +271,7 @@ class _RendezVousSectionState extends State<RendezVousSection> {
                           ),
 
                           IconButton(
-                            icon: const Icon(Icons.calendar_today),
+                            icon: const Text("📅", style: TextStyle(fontSize: 24)),
                             onPressed: () async {
                               DateTime? picked = await showDatePicker(
                                 context: context,
@@ -268,16 +291,11 @@ class _RendezVousSectionState extends State<RendezVousSection> {
                             },
                           ),
 
-                          IconButton(
-                            icon:
-                            const Icon(Icons.delete, color: Colors.red),
+                          TextButton(
                             onPressed: () async {
-                              setState(() {
-                                date = null;
-                              });
-
-                              await updateRdv(doc.id, controller.text, null);
+                              await deleteRdv(doc.id, controller.text, date);
                             },
+                            child: const Text("🗑️", style: TextStyle(fontSize: 22)),
                           ),
                         ],
                       ),
