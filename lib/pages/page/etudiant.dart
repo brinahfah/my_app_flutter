@@ -86,6 +86,26 @@ class _ElevePageState extends State<ElevePage> {
     await batch.commit();
   }
 
+  /// DELETE ELEVE
+  Future<void> supprimerEleve(String eleveId, String tuteurId) async {
+    final batch = firestore.batch();
+
+    batch.delete(firestore.collection("eleves").doc(eleveId));
+    batch.delete(firestore.collection("tuteurs").doc(tuteurId));
+
+    final meetsSnap = await firestore.collection("meets").where("eleveId", isEqualTo: eleveId).get();
+    for (var doc in meetsSnap.docs) {
+      batch.delete(doc.reference);
+    }
+
+    final missionsSnap = await firestore.collection("missions").where("eleveId", isEqualTo: eleveId).get();
+    for (var doc in missionsSnap.docs) {
+      batch.delete(doc.reference);
+    }
+
+    await batch.commit();
+  }
+
   /// DIALOG
   Future<void> ajouterEleve() async {
     final nomController = TextEditingController();
@@ -163,7 +183,6 @@ class _ElevePageState extends State<ElevePage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        // Insertion de ton bouton personnalisé ici
         leading: Padding(
           padding: const EdgeInsets.all(8),
           child: squareButton("←", Colors.blue, () {
@@ -171,6 +190,13 @@ class _ElevePageState extends State<ElevePage> {
           }),
         ),
         title: Text("Classe ${widget.nomClasse}"),
+        actions: [
+          // Bouton Ajouter élève
+          TextButton(
+            onPressed: ajouterEleve,
+            child: const Text("👤 +", style: TextStyle(fontSize: 18)),
+          ),
+        ],
       ),
       body: LayoutBuilder(
         builder: (context, constraints) {
@@ -196,6 +222,7 @@ class _ElevePageState extends State<ElevePage> {
       ),
     );
   }
+
   /// MOBILE
   Widget buildMobileList(List<QueryDocumentSnapshot> eleves) {
     return ListView.builder(
@@ -212,11 +239,38 @@ class _ElevePageState extends State<ElevePage> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text("${data["prenom"]} ${data["nom"]}",
-                    style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text("${data["prenom"]} ${data["nom"]}",
+                        style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                    // Bouton Supprimer
+                    TextButton(
+                      onPressed: () async {
+                        final confirm = await showDialog<bool>(
+                          context: context,
+                          builder: (dialogContext) => AlertDialog(
+                            title: const Text("Confirmer la suppression"),
+                            content: const Text("Voulez-vous vraiment supprimer cet élève ?"),
+                            actions: [
+                              TextButton(
+                                  onPressed: () => Navigator.pop(dialogContext, false),
+                                  child: const Text("Annuler")),
+                              TextButton(
+                                  onPressed: () => Navigator.pop(dialogContext, true),
+                                  child: const Text("Supprimer")),
+                            ],
+                          ),
+                        );
+                        if (confirm == true) {
+                          await supprimerEleve(doc.id, data["tuteurId"]);
+                        }
+                      },
+                      child: const Text("🗑️", style: TextStyle(fontSize: 18, color: Colors.red)),
+                    ),
+                  ],
+                ),
                 const SizedBox(height: 10),
-
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
@@ -255,6 +309,7 @@ class _ElevePageState extends State<ElevePage> {
           DataColumn(label: Text("RDV (/3)")),
           DataColumn(label: Text("Missions (/4)")),
           DataColumn(label: Text("Commentaire (/1)")),
+          DataColumn(label: Text("Supprimer")),
         ],
         rows: eleves.map((doc) {
           final data = doc.data() as Map<String, dynamic>;
@@ -262,15 +317,12 @@ class _ElevePageState extends State<ElevePage> {
           return DataRow(cells: [
             DataCell(Text(data["nom"] ?? "")),
             DataCell(Text(data["prenom"] ?? "")),
-
             DataCell(scoreClickableTable(getScoreRDV(doc.id), 3, () {
               Navigator.push(context, MaterialPageRoute(builder: (_) => RendezVousSection(eleveId: doc.id)));
             })),
-
             DataCell(scoreClickableTable(getScoreMissions(doc.id), 4, () {
               Navigator.push(context, MaterialPageRoute(builder: (_) => MissionsSection(eleveId: doc.id)));
             })),
-
             DataCell(scoreClickableTable(getScoreCommentaire(doc.id), 1, () {
               Navigator.push(context, MaterialPageRoute(
                 builder: (_) => CommentaireSection(
@@ -279,6 +331,29 @@ class _ElevePageState extends State<ElevePage> {
                 ),
               ));
             })),
+            DataCell(TextButton(
+              onPressed: () async {
+                final confirm = await showDialog<bool>(
+                  context: context,
+                  builder: (dialogContext) => AlertDialog(
+                    title: const Text("Confirmer la suppression"),
+                    content: const Text("Voulez-vous vraiment supprimer cet élève ?"),
+                    actions: [
+                      TextButton(
+                          onPressed: () => Navigator.pop(dialogContext, false),
+                          child: const Text("Annuler")),
+                      TextButton(
+                          onPressed: () => Navigator.pop(dialogContext, true),
+                          child: const Text("Supprimer")),
+                    ],
+                  ),
+                );
+                if (confirm == true) {
+                  await supprimerEleve(doc.id, data["tuteurId"]);
+                }
+              },
+              child: const Text("🗑️", style: TextStyle(fontSize: 18, color: Colors.red)),
+            )),
           ]);
         }).toList(),
       ),
