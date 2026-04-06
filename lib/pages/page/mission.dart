@@ -89,7 +89,7 @@ class _MissionsSectionState extends State<MissionsSection> {
 
             if (!controllers.containsKey(doc.id)) {
               controllers[doc.id] =
-                  TextEditingController(text: data['commentaire'] ?? "");
+                  TextEditingController(text: data['commentaires'] ?? "");
             }
 
             final controller = controllers[doc.id]!;
