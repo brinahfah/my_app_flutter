@@ -162,13 +162,27 @@ class _ElevePageState extends State<ElevePage> {
   }
 
   Future<int> getScoreRDV(String eleveId) async {
-    final snap = await firestore.collection("meets").where("eleveId", isEqualTo: eleveId).get();
-    return snap.docs.where((d) => d["date"] != null).length;
+    final snap = await firestore
+        .collection("meets")
+        .where("eleveId", isEqualTo: eleveId)
+        .get();
+
+    return snap.docs.where((d) {
+      final data = d.data() as Map<String, dynamic>;
+      return data["statut"] == "Complété";
+    }).length;
   }
 
   Future<int> getScoreMissions(String eleveId) async {
-    final snap = await firestore.collection("missions").where("eleveId", isEqualTo: eleveId).get();
-    return snap.docs.where((d) => d["dateEffectuee"] != null).length;
+    final snap = await firestore
+        .collection("missions")
+        .where("eleveId", isEqualTo: eleveId)
+        .get();
+
+    return snap.docs.where((d) {
+      final data = d.data() as Map<String, dynamic>;
+      return data["statut"] == "Complété";
+    }).length;
   }
 
   Future<int> getScoreCommentaire(String eleveId) async {

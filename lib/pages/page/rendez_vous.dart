@@ -126,8 +126,17 @@ class _RendezVousSectionState extends State<RendezVousSection> {
     super.initState();
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      NotificationService.verifierNotifications(context, testMode: true);
+      NotificationService.verifierNotifications(context);
     });
+
+    Future.delayed(const Duration(seconds: 5), _loopNotifications);
+  }
+
+  void _loopNotifications() async {
+    while (mounted) {
+      await NotificationService.verifierNotifications(context);
+      await Future.delayed(const Duration(minutes: 10));
+    }
   }
 
   @override

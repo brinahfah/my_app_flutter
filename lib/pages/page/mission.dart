@@ -65,6 +65,7 @@ class _MissionsSectionState extends State<MissionsSection> {
 
   Future<void> deleteMission(
       String docId, String commentaire, DateTime? dateEffectuee) async {
+    // Confirmation avant suppression
     final confirm = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
@@ -86,183 +87,10 @@ class _MissionsSectionState extends State<MissionsSection> {
     }
   }
 
-  // 🔥 DATE PICKER CUSTOM
-  Future<DateTime?> showCustomDatePicker(DateTime initialDate) async {
-    DateTime selectedDate = initialDate;
-
-    return await showDialog<DateTime>(
-      context: context,
-      builder: (context) {
-        return StatefulBuilder(
-          builder: (context, setStateDialog) {
-            return AlertDialog(
-              title: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text("${selectedDate.year}-${selectedDate.month}"),
-
-                  Row(
-                    children: [
-                      // ⬅️ mois précédent
-                      IconButton(
-                        onPressed: () {
-                          setStateDialog(() {
-                            selectedDate = DateTime(
-                                selectedDate.year, selectedDate.month - 1, 1);
-                          });
-                        },
-                        icon: const Text("⬅️"),
-                      ),
-
-                      // ➡️ mois suivant
-                      IconButton(
-                        onPressed: () {
-                          setStateDialog(() {
-                            selectedDate = DateTime(
-                                selectedDate.year, selectedDate.month + 1, 1);
-                          });
-                        },
-                        icon: const Text("➡️"),
-                      ),
-
-                      // 📅 choisir année
-                      IconButton(
-                        onPressed: () async {
-                          final year = await showDialog<int>(
-                            context: context,
-                            builder: (_) {
-                              return AlertDialog(
-                                title: const Text("Choisir une année"),
-                                content: SizedBox(
-                                  width: 200,
-                                  height: 200,
-                                  child: ListView.builder(
-                                    itemCount: 100,
-                                    itemBuilder: (_, i) {
-                                      int y = 2000 + i;
-                                      return ListTile(
-                                        title: Text("$y"),
-                                        onTap: () {
-                                          Navigator.pop(context, y);
-                                        },
-                                      );
-                                    },
-                                  ),
-                                ),
-                              );
-                            },
-                          );
-
-                          if (year != null) {
-                            setStateDialog(() {
-                              selectedDate =
-                                  DateTime(year, selectedDate.month, 1);
-                            });
-                          }
-                        },
-                        icon: const Text("📅"),
-                      ),
-
-                      // ⌨️ saisie manuelle
-                      IconButton(
-                        onPressed: () async {
-                          TextEditingController ctrl =
-                          TextEditingController(
-                              text:
-                              "${selectedDate.year}-${selectedDate.month}-${selectedDate.day}");
-
-                          final result = await showDialog<DateTime>(
-                            context: context,
-                            builder: (_) {
-                              return AlertDialog(
-                                title: const Text("Saisir une date"),
-                                content: TextField(
-                                  controller: ctrl,
-                                  decoration: const InputDecoration(
-                                      hintText: "YYYY-MM-DD"),
-                                ),
-                                actions: [
-                                  TextButton(
-                                      onPressed: () =>
-                                          Navigator.pop(context),
-                                      child: const Text("Annuler")),
-                                  TextButton(
-                                    onPressed: () {
-                                      try {
-                                        final parts =
-                                        ctrl.text.split("-");
-                                        final d = DateTime(
-                                          int.parse(parts[0]),
-                                          int.parse(parts[1]),
-                                          int.parse(parts[2]),
-                                        );
-                                        Navigator.pop(context, d);
-                                      } catch (_) {}
-                                    },
-                                    child: const Text("OK"),
-                                  ),
-                                ],
-                              );
-                            },
-                          );
-
-                          if (result != null) {
-                            setStateDialog(() {
-                              selectedDate = result;
-                            });
-                          }
-                        },
-                        icon: const Text("⌨️"),
-                      ),
-                    ],
-                  )
-                ],
-              ),
-
-              content: SizedBox(
-                height: 250,
-                child: GridView.builder(
-                  gridDelegate:
-                  const SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: 7,
-                  ),
-                  itemCount: 31,
-                  itemBuilder: (_, i) {
-                    int day = i + 1;
-                    return GestureDetector(
-                      onTap: () {
-                        Navigator.pop(
-                            context,
-                            DateTime(selectedDate.year,
-                                selectedDate.month, day));
-                      },
-                      child: Center(child: Text("$day")),
-                    );
-                  },
-                ),
-              ),
-
-              actions: [
-                TextButton(
-                    onPressed: () => Navigator.pop(context),
-                    child: const Text("❌ Annuler")),
-                TextButton(
-                    onPressed: () => Navigator.pop(context, selectedDate),
-                    child: const Text("✔️ OK")),
-              ],
-            );
-          },
-        );
-      },
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     return StreamBuilder<QuerySnapshot>(
-      stream: missionsRef
-          .where('eleveId', isEqualTo: widget.eleveId)
-          .snapshots(),
+      stream: missionsRef.where('eleveId', isEqualTo: widget.eleveId).snapshots(),
       builder: (context, snapshot) {
         if (!snapshot.hasData) {
           return const Center(child: CircularProgressIndicator());
@@ -299,14 +127,18 @@ class _MissionsSectionState extends State<MissionsSection> {
                     children: [
                       Text("Mission ${data['numero']}"),
                       Text("Statut: $statut"),
+
                       const SizedBox(height: 8),
+
                       TextField(
                         controller: controller,
                         decoration: const InputDecoration(
                           labelText: "Commentaire",
                         ),
                       ),
+
                       const SizedBox(height: 8),
+
                       Row(
                         children: [
                           Expanded(
@@ -324,12 +156,14 @@ class _MissionsSectionState extends State<MissionsSection> {
                             ),
                           ),
 
-                          // 🔥 UTILISATION DU CUSTOM PICKER
                           TextButton(
                             onPressed: () async {
-                              DateTime? picked =
-                              await showCustomDatePicker(
-                                  dateEffectuee ?? DateTime.now());
+                              DateTime? picked = await showDatePicker(
+                                context: context,
+                                initialDate: dateEffectuee ?? DateTime.now(),
+                                firstDate: DateTime(2020),
+                                lastDate: DateTime(2100),
+                              );
 
                               if (picked != null) {
                                 setState(() {
@@ -340,17 +174,14 @@ class _MissionsSectionState extends State<MissionsSection> {
                                     doc.id, controller.text, dateEffectuee);
                               }
                             },
-                            child: const Text("📅",
-                                style: TextStyle(fontSize: 24)),
+                            child: const Text("📅", style: TextStyle(fontSize: 24)),
                           ),
 
                           TextButton(
                             onPressed: () async {
-                              await deleteMission(
-                                  doc.id, controller.text, dateEffectuee);
+                              await deleteMission(doc.id, controller.text, dateEffectuee);
                             },
-                            child: const Text("🗑️",
-                                style: TextStyle(fontSize: 24)),
+                            child: const Text("🗑️", style: TextStyle(fontSize: 24)),
                           ),
                         ],
                       ),

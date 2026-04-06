@@ -3,14 +3,16 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 import 'dart:io' show Platform;
 
 class NotificationDisplayService {
-  // Affiche notification
   static Future<void> showNotification(
       BuildContext context, {
         required String title,
         required String body,
       }) async {
-    // Web ou Desktop
-    if (kIsWeb || (Platform.isLinux || Platform.isWindows || Platform.isMacOS)) {
+    if (kIsWeb ||
+        Platform.isLinux ||
+        Platform.isWindows ||
+        Platform.isMacOS) {
+      ScaffoldMessenger.of(context).clearSnackBars();
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('$title\n$body'),
@@ -18,17 +20,18 @@ class NotificationDisplayService {
         ),
       );
     } else {
-      // Mobile → utiliser un dialogue simple
+      if (!context.mounted) return;
+
       showDialog(
         context: context,
-        builder: (context) => AlertDialog(
+        builder: (dialogContext) => AlertDialog(
           title: Text(title),
           content: Text(body),
           actions: [
             TextButton(
-              onPressed: () => Navigator.pop(context),
+              onPressed: () => Navigator.pop(dialogContext),
               child: const Text("OK"),
-            )
+            ),
           ],
         ),
       );
