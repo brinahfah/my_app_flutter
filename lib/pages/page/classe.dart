@@ -90,7 +90,7 @@ class _ClassePageState extends State<ClassePage> {
                   Navigator.pop(context);
                 }
               },
-              child: const Text("Ajouters"),
+              child: const Text("Ajouter"),
             ),
           ],
         );
