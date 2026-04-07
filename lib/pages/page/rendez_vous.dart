@@ -121,6 +121,9 @@ class _RendezVousSectionState extends State<RendezVousSection> {
 
   Map<String, TextEditingController> controllers = {};
 
+  // ✅ FIX : stockage local des dates
+  Map<String, DateTime?> dates = {};
+
   @override
   void initState() {
     super.initState();
@@ -187,13 +190,14 @@ class _RendezVousSectionState extends State<RendezVousSection> {
     });
   }
 
-  Future<void> deleteRdv(String docId, String commentaire, DateTime? date) async {
-    // Confirmation avant suppression
+  Future<void> deleteRdv(
+      String docId, String commentaire, DateTime? date) async {
     final confirm = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
         title: const Text("Confirmer la suppression"),
-        content: const Text("Voulez-vous vraiment supprimer ce rendez-vous ?"),
+        content: const Text(
+            "Voulez-vous vraiment supprimer ce rendez-vous ?"),
         actions: [
           TextButton(
               onPressed: () => Navigator.pop(dialogContext, false),
@@ -213,7 +217,8 @@ class _RendezVousSectionState extends State<RendezVousSection> {
   @override
   Widget build(BuildContext context) {
     return StreamBuilder<QuerySnapshot>(
-      stream: rdvRef.where('eleveId', isEqualTo: widget.eleveId).snapshots(),
+      stream:
+      rdvRef.where('eleveId', isEqualTo: widget.eleveId).snapshots(),
       builder: (context, snapshot) {
         if (!snapshot.hasData) {
           return const Center(child: CircularProgressIndicator());
@@ -228,16 +233,22 @@ class _RendezVousSectionState extends State<RendezVousSection> {
               final doc = rdvs[index];
               final data = doc.data() as Map<String, dynamic>;
 
+              // Controller
               if (!controllers.containsKey(doc.id)) {
-                controllers[doc.id] =
-                    TextEditingController(text: data['commentaire'] ?? "");
+                controllers[doc.id] = TextEditingController(
+                    text: data['commentaire'] ?? "");
               }
 
               final controller = controllers[doc.id]!;
 
-              DateTime? date = data['date'] != null
-                  ? (data['date'] as Timestamp).toDate()
-                  : null;
+              // ✅ FIX DATE
+              if (!dates.containsKey(doc.id)) {
+                dates[doc.id] = data['date'] != null
+                    ? (data['date'] as Timestamp).toDate()
+                    : null;
+              }
+
+              DateTime? date = dates[doc.id];
 
               String statut = computeStatut(date, controller.text);
 
@@ -248,7 +259,8 @@ class _RendezVousSectionState extends State<RendezVousSection> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text("Rendez-vous ${data['numero']} - ${data['theme']}"),
+                      Text(
+                          "Rendez-vous ${data['numero']} - ${data['theme']}"),
                       Text("Statut: $statut"),
 
                       const SizedBox(height: 8),
@@ -268,8 +280,10 @@ class _RendezVousSectionState extends State<RendezVousSection> {
                             child: Container(
                               padding: const EdgeInsets.all(12),
                               decoration: BoxDecoration(
-                                border: Border.all(color: Colors.grey),
-                                borderRadius: BorderRadius.circular(8),
+                                border:
+                                Border.all(color: Colors.grey),
+                                borderRadius:
+                                BorderRadius.circular(8),
                               ),
                               child: Text(
                                 date != null
@@ -280,33 +294,74 @@ class _RendezVousSectionState extends State<RendezVousSection> {
                           ),
 
                           IconButton(
-                            icon: const Text("📅", style: TextStyle(fontSize: 24)),
+                            icon: const Text("📅",
+                                style: TextStyle(fontSize: 24)),
                             onPressed: () async {
-                              DateTime? picked = await showDatePicker(
+                              DateTime? picked =
+                              await showDatePicker(
                                 context: context,
-                                initialDate: date ?? DateTime.now(),
+                                initialDate:
+                                date ?? DateTime.now(),
                                 firstDate: DateTime(2020),
                                 lastDate: DateTime(2100),
                               );
 
                               if (picked != null) {
                                 setState(() {
-                                  date = picked;
+                                  dates[doc.id] = picked;
                                 });
-
-                                await updateRdv(
-                                    doc.id, controller.text, date);
                               }
                             },
                           ),
 
                           TextButton(
                             onPressed: () async {
-                              await deleteRdv(doc.id, controller.text, date);
+                              await deleteRdv(
+                                  doc.id,
+                                  controller.text,
+                                  date);
                             },
-                            child: const Text("🗑️", style: TextStyle(fontSize: 22)),
+                            child: const Text("🗑️",
+                                style: TextStyle(fontSize: 22)),
                           ),
                         ],
+                      ),
+
+                      const SizedBox(height: 10),
+
+                      // ✅ BOUTON ENREGISTRER
+                      SizedBox(
+                        width: double.infinity,
+                        child: ElevatedButton(
+                          onPressed: () async {
+                            if (date == null ||
+                                controller.text.trim().isEmpty) {
+                              NotificationDisplayService
+                                  .showNotification(
+                                context,
+                                title: "Champs requis",
+                                body:
+                                "Merci de remplir la date et le commentaire",
+                              );
+                              return;
+                            }
+
+                            await updateRdv(
+                              doc.id,
+                              controller.text,
+                              date,
+                            );
+
+                            NotificationDisplayService
+                                .showNotification(
+                              context,
+                              title: "Succès",
+                              body:
+                              "Rendez-vous enregistré ✅",
+                            );
+                          },
+                          child: const Text("Enregistrer"),
+                        ),
                       ),
                     ],
                   ),

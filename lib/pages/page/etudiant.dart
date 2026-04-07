@@ -288,19 +288,33 @@ class _ElevePageState extends State<ElevePage> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    scoreClickable("RDV", getScoreRDV(doc.id), 3, () {
-                      Navigator.push(context, MaterialPageRoute(builder: (_) => RendezVousSection(eleveId: doc.id)));
+                    scoreClickable("RDV", getScoreRDV(doc.id), 3, () async {
+                      await Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (_) => RendezVousSection(eleveId: doc.id)),
+                      );
+                      setState(() {}); // 🔥 refresh auto
                     }),
-                    scoreClickable("Missions", getScoreMissions(doc.id), 4, () {
-                      Navigator.push(context, MaterialPageRoute(builder: (_) => MissionsSection(eleveId: doc.id)));
+
+                    scoreClickable("Missions", getScoreMissions(doc.id), 4, () async {
+                      await Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (_) => MissionsSection(eleveId: doc.id)),
+                      );
+                      setState(() {}); // 🔥 refresh auto
                     }),
-                    scoreClickable("Com", getScoreCommentaire(doc.id), 1, () {
-                      Navigator.push(context, MaterialPageRoute(
-                        builder: (_) => CommentaireSection(
-                          eleveId: doc.id,
-                          commentaireInitial: data["commentaireFinal"] ?? "",
+
+                    scoreClickable("Com", getScoreCommentaire(doc.id), 1, () async {
+                      await Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => CommentaireSection(
+                            eleveId: doc.id,
+                            commentaireInitial: data["commentaireFinal"] ?? "",
+                          ),
                         ),
-                      ));
+                      );
+                      setState(() {}); // 🔥 refresh auto
                     }),
                   ],
                 ),
@@ -331,19 +345,33 @@ class _ElevePageState extends State<ElevePage> {
           return DataRow(cells: [
             DataCell(Text(data["nom"] ?? "")),
             DataCell(Text(data["prenom"] ?? "")),
-            DataCell(scoreClickableTable(getScoreRDV(doc.id), 3, () {
-              Navigator.push(context, MaterialPageRoute(builder: (_) => RendezVousSection(eleveId: doc.id)));
+            DataCell(scoreClickableTable(getScoreRDV(doc.id), 3, () async {
+              await Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => RendezVousSection(eleveId: doc.id)),
+              );
+              setState(() {});
             })),
-            DataCell(scoreClickableTable(getScoreMissions(doc.id), 4, () {
-              Navigator.push(context, MaterialPageRoute(builder: (_) => MissionsSection(eleveId: doc.id)));
+
+            DataCell(scoreClickableTable(getScoreMissions(doc.id), 4, () async {
+              await Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => MissionsSection(eleveId: doc.id)),
+              );
+              setState(() {});
             })),
-            DataCell(scoreClickableTable(getScoreCommentaire(doc.id), 1, () {
-              Navigator.push(context, MaterialPageRoute(
-                builder: (_) => CommentaireSection(
-                  eleveId: doc.id,
-                  commentaireInitial: data["commentaireFinal"] ?? "",
+
+            DataCell(scoreClickableTable(getScoreCommentaire(doc.id), 1, () async {
+              await Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => CommentaireSection(
+                    eleveId: doc.id,
+                    commentaireInitial: data["commentaireFinal"] ?? "",
+                  ),
                 ),
-              ));
+              );
+              setState(() {});
             })),
             DataCell(TextButton(
               onPressed: () async {

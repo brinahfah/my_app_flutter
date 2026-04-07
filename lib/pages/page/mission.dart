@@ -46,8 +46,7 @@ class _MissionsSectionState extends State<MissionsSection> {
 
     if (d.isAfter(today)) return "En retard";
     if (d.isAtSameMomentAs(today)) return "En cours";
-    if (d.isBefore(today) && commentaire.isNotEmpty) return "Complété";
-    if (d.isBefore(today) && commentaire.isEmpty) return "En retard";
+    if (d.isBefore(today)) return "Complété";
 
     return "À faire";
   }
@@ -65,7 +64,6 @@ class _MissionsSectionState extends State<MissionsSection> {
 
   Future<void> deleteMission(
       String docId, String commentaire, DateTime? dateEffectuee) async {
-    // Confirmation avant suppression
     final confirm = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
@@ -184,6 +182,27 @@ class _MissionsSectionState extends State<MissionsSection> {
                             child: const Text("🗑️", style: TextStyle(fontSize: 24)),
                           ),
                         ],
+                      ),
+
+                      const SizedBox(height: 10),
+
+                      // ✅ BOUTON ENREGISTRER AJOUTÉ
+                      SizedBox(
+                        width: double.infinity,
+                        child: ElevatedButton(
+                          onPressed: () async {
+                            await updateMission(
+                              doc.id,
+                              controller.text,
+                              dateEffectuee,
+                            );
+
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(content: Text("Mission enregistrée ✅")),
+                            );
+                          },
+                          child: const Text("Enregistrer"),
+                        ),
                       ),
                     ],
                   ),
