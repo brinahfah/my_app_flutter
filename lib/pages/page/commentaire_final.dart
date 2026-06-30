@@ -1,64 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
-import '../../services/notification_display_service.dart';
-
-
-// 🔔 Service notification commentaire
-class CommentaireNotificationService {
-  static Future<void> verifierNotification(
-      BuildContext context,
-      String eleveId,
-      ) async {
-    final eleveRef =
-    FirebaseFirestore.instance.collection('eleves').doc(eleveId);
-
-    final doc = await eleveRef.get();
-
-    if (!doc.exists) return;
-
-    var data = doc.data() as Map<String, dynamic>;
-
-    String? commentaire = data['commentaireFinal'];
-
-    Map notif = data['notificationCommentaire'] ?? {
-      "rappel": false,
-      "valide": false,
-    };
-
-    bool updated = false;
-
-    // 🔹 Pas de commentaire → rappel
-    if ((commentaire == null || commentaire.isEmpty) &&
-        notif["rappel"] == false) {
-      await NotificationDisplayService.showNotification(
-        context,
-        title: "Commentaire manquant",
-        body: "Veuillez renseigner le commentaire final de l'étudiant",
-      );
-
-      notif["rappel"] = true;
-      updated = true;
-    }
-
-    // 🔹 Commentaire rempli → confirmation
-    if ((commentaire != null && commentaire.isNotEmpty) &&
-        notif["valide"] == false) {
-      await NotificationDisplayService.showNotification(
-        context,
-        title: "Commentaire enregistré",
-        body: "Le commentaire final a bien été ajouté",
-      );
-
-      notif["valide"] = true;
-      updated = true;
-    }
-
-    if (updated) {
-      await eleveRef.update({"notificationCommentaire": notif});
-    }
-  }
-}
 
 class CommentaireSection extends StatefulWidget {
   final String eleveId;
@@ -100,12 +42,7 @@ class _CommentaireSectionState extends State<CommentaireSection> {
       selectedComment = widget.commentaireInitial;
     }
 
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      CommentaireNotificationService.verifierNotification(
-        context,
-        widget.eleveId,
-      );
-    });
+
   }
 
   Future<void> saveCommentaire() async {
@@ -124,10 +61,6 @@ class _CommentaireSectionState extends State<CommentaireSection> {
         ),
       );
 
-      CommentaireNotificationService.verifierNotification(
-        context,
-        widget.eleveId,
-      );
     }
   }
 

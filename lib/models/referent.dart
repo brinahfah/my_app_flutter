@@ -1,7 +1,5 @@
 import 'classe.dart';
 import 'eleve.dart';
-import 'models/classe.dart';
-import 'models/eleve.dart';
 
 class Referent {
   String nom;

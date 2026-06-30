@@ -1,112 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:flutter/foundation.dart' show kIsWeb;
-import 'dart:io' show Platform;
 
-// 🔹 Affichage des notifications
-class NotificationDisplayService {
-  static Future<void> showNotification(
-      BuildContext context, {
-        required String title,
-        required String body,
-      }) async {
-    if (kIsWeb || (Platform.isLinux || Platform.isWindows || Platform.isMacOS)) {
-      ScaffoldMessenger.of(context).clearSnackBars();
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('$title\n$body'),
-          duration: const Duration(seconds: 5),
-        ),
-      );
-    } else {
-      showDialog(
-        context: context,
-        builder: (dialogContext) => AlertDialog(
-          title: Text(title),
-          content: Text(body),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(dialogContext),
-              child: const Text("OK"),
-            ),
-          ],
-        ),
-      );
-    }
-  }
-}
-
-// 🔹 Vérification des notifications
-class NotificationService {
-  static Future<void> verifierNotifications(
-      BuildContext context, {
-        bool testMode = false,
-      }) async {
-    final rdvRef = FirebaseFirestore.instance.collection('meets');
-    final snapshot = await rdvRef.get();
-
-    final now = DateTime.now();
-    final today = DateTime(now.year, now.month, now.day);
-
-    for (var doc in snapshot.docs) {
-      var data = doc.data() as Map<String, dynamic>;
-      if (data['date'] == null) continue;
-
-      DateTime rdvDate = (data['date'] as Timestamp).toDate();
-      DateTime dateOnly = DateTime(rdvDate.year, rdvDate.month, rdvDate.day);
-
-      int diffDays = dateOnly.difference(today).inDays;
-
-      Map notif = data['notificationsEnvoyees'] ?? {
-        "1_semaine_avant": false,
-        "jour_j": false,
-        "7_jours_apres": false,
-      };
-
-      bool updated = false;
-
-      if ((diffDays == 7 || testMode) && notif["1_semaine_avant"] == false) {
-        await NotificationDisplayService.showNotification(
-          context,
-          title: "Rendez-vous à venir",
-          body: "Le RDV '${data['theme']}' aura lieu dans 1 semaine",
-        );
-        notif["1_semaine_avant"] = true;
-        updated = true;
-      }
-
-      if ((diffDays == 0 || testMode) &&
-          notif["jour_j"] == false &&
-          data['statut'] != "Complété") {
-        await NotificationDisplayService.showNotification(
-          context,
-          title: "Rendez-vous aujourd'hui",
-          body: "Le RDV '${data['theme']}' doit être effectué aujourd'hui",
-        );
-        notif["jour_j"] = true;
-        updated = true;
-      }
-
-      if ((diffDays == -7 || testMode) &&
-          notif["7_jours_apres"] == false &&
-          data['statut'] != "Complété") {
-        await NotificationDisplayService.showNotification(
-          context,
-          title: "Rendez-vous en retard",
-          body: "Le RDV '${data['theme']}' est en retard de 7 jours",
-        );
-        notif["7_jours_apres"] = true;
-        updated = true;
-      }
-
-      if (updated) {
-        await doc.reference.update({"notificationsEnvoyees": notif});
-      }
-    }
-  }
-}
-
-// 🔹 Section RDV
 class RendezVousSection extends StatefulWidget {
   final String eleveId;
   const RendezVousSection({super.key, required this.eleveId});
@@ -116,31 +10,10 @@ class RendezVousSection extends StatefulWidget {
 }
 
 class _RendezVousSectionState extends State<RendezVousSection> {
-  final CollectionReference rdvRef =
-  FirebaseFirestore.instance.collection('meets');
+  final CollectionReference rdvRef = FirebaseFirestore.instance.collection('meets');
 
   Map<String, TextEditingController> controllers = {};
-
-  // ✅ FIX : stockage local des dates
   Map<String, DateTime?> dates = {};
-
-  @override
-  void initState() {
-    super.initState();
-
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      NotificationService.verifierNotifications(context);
-    });
-
-    Future.delayed(const Duration(seconds: 5), _loopNotifications);
-  }
-
-  void _loopNotifications() async {
-    while (mounted) {
-      await NotificationService.verifierNotifications(context);
-      await Future.delayed(const Duration(minutes: 10));
-    }
-  }
 
   @override
   void dispose() {
@@ -155,11 +28,11 @@ class _RendezVousSectionState extends State<RendezVousSection> {
       case "Complété":
         return Colors.green.shade800;
       case "En retard":
-        return Colors.red;
+        return Colors.red.shade800;
       case "En cours":
-        return Colors.green.shade400;
+        return Colors.green.shade500;
       default:
-        return Colors.yellow;
+        return Colors.yellow.shade500;
     }
   }
 
@@ -179,8 +52,7 @@ class _RendezVousSectionState extends State<RendezVousSection> {
     return "À faire";
   }
 
-  Future<void> updateRdv(
-      String docId, String commentaire, DateTime? date) async {
+  Future<void> updateRdv(String docId, String commentaire, DateTime? date) async {
     String statut = computeStatut(date, commentaire);
 
     await rdvRef.doc(docId).update({
@@ -190,35 +62,21 @@ class _RendezVousSectionState extends State<RendezVousSection> {
     });
   }
 
-  Future<void> deleteRdv(
-      String docId, String commentaire, DateTime? date) async {
-    final confirm = await showDialog<bool>(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text("Confirmer la suppression"),
-        content: const Text(
-            "Voulez-vous vraiment supprimer ce rendez-vous ?"),
-        actions: [
-          TextButton(
-              onPressed: () => Navigator.pop(dialogContext, false),
-              child: const Text("Annuler")),
-          TextButton(
-              onPressed: () => Navigator.pop(dialogContext, true),
-              child: const Text("Supprimer")),
-        ],
-      ),
-    );
+  Future<void> deleteRdv(String docId) async {
+    await rdvRef.doc(docId).update({
+      "date": null,
+      "commentaire": "",
+      "statut": "À faire",
+    });
 
-    if (confirm == true) {
-      await updateRdv(docId, commentaire, null);
-    }
+    controllers[docId]?.clear();
+    dates[docId] = null;
   }
 
   @override
   Widget build(BuildContext context) {
     return StreamBuilder<QuerySnapshot>(
-      stream:
-      rdvRef.where('eleveId', isEqualTo: widget.eleveId).snapshots(),
+      stream: rdvRef.where('eleveId', isEqualTo: widget.eleveId).snapshots(),
       builder: (context, snapshot) {
         if (!snapshot.hasData) {
           return const Center(child: CircularProgressIndicator());
@@ -226,30 +84,28 @@ class _RendezVousSectionState extends State<RendezVousSection> {
 
         final rdvs = snapshot.data!.docs;
 
-        return Expanded(
-          child: ListView.builder(
+        if (rdvs.isEmpty) {
+          return const Center(child: Text("Aucun rendez-vous", style: TextStyle(color: Colors.black)));
+        }
+
+        return ListView.builder(
+
             itemCount: rdvs.length,
             itemBuilder: (context, index) {
               final doc = rdvs[index];
-              final data = doc.data() as Map<String, dynamic>;
+              final data = doc.data() as Map<String, dynamic>? ?? {};
 
-              // Controller
               if (!controllers.containsKey(doc.id)) {
-                controllers[doc.id] = TextEditingController(
-                    text: data['commentaire'] ?? "");
+                controllers[doc.id] = TextEditingController(text: data['commentaire'] ?? "");
               }
-
               final controller = controllers[doc.id]!;
 
-              // ✅ FIX DATE
               if (!dates.containsKey(doc.id)) {
                 dates[doc.id] = data['date'] != null
                     ? (data['date'] as Timestamp).toDate()
                     : null;
               }
-
               DateTime? date = dates[doc.id];
-
               String statut = computeStatut(date, controller.text);
 
               return Card(
@@ -259,53 +115,38 @@ class _RendezVousSectionState extends State<RendezVousSection> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                          "Rendez-vous ${data['numero']} - ${data['theme']}"),
+                      Text("Rendez-vous ${data['numero'] ?? 'N/A'} - ${data['theme'] ?? 'N/A'}"),
                       Text("Statut: $statut"),
-
                       const SizedBox(height: 8),
-
                       TextField(
                         controller: controller,
                         decoration: const InputDecoration(
                           labelText: "Commentaire",
                         ),
                       ),
-
                       const SizedBox(height: 8),
-
                       Row(
                         children: [
                           Expanded(
                             child: Container(
                               padding: const EdgeInsets.all(12),
                               decoration: BoxDecoration(
-                                border:
-                                Border.all(color: Colors.grey),
-                                borderRadius:
-                                BorderRadius.circular(8),
+                                border: Border.all(color: Colors.grey),
+                                borderRadius: BorderRadius.circular(8),
                               ),
                               child: Text(
-                                date != null
-                                    ? "${date.year}-${date.month}-${date.day}"
-                                    : "Aucune date",
-                              ),
+                                  date != null ? "${date.year}-${date.month}-${date.day}" : "Aucune date"),
                             ),
                           ),
-
                           IconButton(
-                            icon: const Text("📅",
-                                style: TextStyle(fontSize: 24)),
+                            icon: const Icon(Icons.calendar_today),
                             onPressed: () async {
-                              DateTime? picked =
-                              await showDatePicker(
+                              DateTime? picked = await showDatePicker(
                                 context: context,
-                                initialDate:
-                                date ?? DateTime.now(),
+                                initialDate: date ?? DateTime.now(),
                                 firstDate: DateTime(2020),
                                 lastDate: DateTime(2100),
                               );
-
                               if (picked != null) {
                                 setState(() {
                                   dates[doc.id] = picked;
@@ -313,51 +154,23 @@ class _RendezVousSectionState extends State<RendezVousSection> {
                               }
                             },
                           ),
-
-                          TextButton(
+                          IconButton(
+                            icon: const Icon(Icons.delete),
                             onPressed: () async {
-                              await deleteRdv(
-                                  doc.id,
-                                  controller.text,
-                                  date);
+                              await deleteRdv(doc.id);
+
                             },
-                            child: const Text("🗑️",
-                                style: TextStyle(fontSize: 22)),
                           ),
                         ],
                       ),
-
                       const SizedBox(height: 10),
-
-                      // ✅ BOUTON ENREGISTRER
                       SizedBox(
                         width: double.infinity,
                         child: ElevatedButton(
                           onPressed: () async {
-                            if (date == null ||
-                                controller.text.trim().isEmpty) {
-                              NotificationDisplayService
-                                  .showNotification(
-                                context,
-                                title: "Champs requis",
-                                body:
-                                "Merci de remplir la date et le commentaire",
-                              );
-                              return;
-                            }
-
-                            await updateRdv(
-                              doc.id,
-                              controller.text,
-                              date,
-                            );
-
-                            NotificationDisplayService
-                                .showNotification(
-                              context,
-                              title: "Succès",
-                              body:
-                              "Rendez-vous enregistré ✅",
+                            await updateRdv(doc.id, controller.text, dates[doc.id]);
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(content: Text("Rendez-vous enregistré ✅")),
                             );
                           },
                           child: const Text("Enregistrer"),
@@ -368,8 +181,8 @@ class _RendezVousSectionState extends State<RendezVousSection> {
                 ),
               );
             },
-          ),
-        );
+          );
+
       },
     );
   }
